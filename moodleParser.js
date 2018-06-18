@@ -1,33 +1,37 @@
 const http = require('http');
 
-module.exports = {
-	//An object with all the needed regex
-	regexList: {
-		coursesPage: /coursebox.*?href=\"(.*?)\"\>(.*?)\<\/a\>/mg,
-		modulePage: {
-			title: /\<div class=\"summary\"\>\<div class=\"no-overflow\"\>\<h1 style=\"text-align: center;\"\>(.*)\<\/h1\>/,
-			uploadsGroups: /\<div class=\"activityinstance\"\>.*?\<\/div\>/g,
-			uploads: /href=\"(.*?)\".*?\"instancename\"\>(.*?)\<.*(?:\"accesshide.*?\>(.*?)\<)*/,
-			uploadType: /(resource|assign|assignment|folder|forum|url|wiki)/
-		},
-		homeworkPage: {
-			test: /\<div class=\"files\"\>\<a href=\"(.*?)\".*?title=\"(.*?)\".*?\/\>(.*?)\<\/a\>/,
-			homework: /\<div id=\"assign_files.*?\"\>.*?alt=\"(.*?)\".*?\<a href=\"(.*?)\"/
-		}
+//An object with all the needed regex
+const regexList = {
+	coursesPage: /coursebox.*?href=\"(.*?)\"\>(.*?)\<\/a\>/mg,
+	modulePage: {
+		title: /\<title\>(.*?)\<\/title\>/,
+		uploadsGroups: /\<div class=\"activityinstance\"\>.*?\<\/div\>/g,
+		uploads: /href=\"(.*?)\".*?\"instancename\"\>(.*?)\<.*(?:\"accesshide.*?\>(.*?)\<)*/,
+		uploadType: /(resource|assign|assignment|folder|forum|url|wiki|page|data)/
 	},
-	//Cut the outer page of moodle
-	cutOuterPage: data => {
+	downloadPage: {
+		pdfViewer: /href=\"(.*?\.pdf)\".*?\>(.*?)\<\/a\>/g,
+		homework: /\<div\>.*?\<a href=\"(.*?)\"\>(.*?)\<\/a\>/g,
+		directoryContent: /href=\"(.*?)\".*?alt=\"(.*?)\"/g
+	}
+}
+
+//Cut the outer page of moodle
+const cutOuterPage = data => {
+	try {
 		let temp = data.split("<!-- main mandatory content of the moodle page  -->")
 		if (temp) data = temp[1]
 		temp = data.split("<!-- end of main mandatory content of the moodle page -->")
 		if (temp) data = temp[0]
-		return data
-	},
+	} catch (e) {}
+	return data
+}
 
+
+module.exports = {
 	//The index page where every modules is listed
-	getAllModules: data => {
+	parseAllModulesLinks: data => {
 		data = cutOuterPage(data)
-
 		let modules = [],
 			temp
 		//Get all the modules
@@ -40,81 +44,100 @@ module.exports = {
 	},
 
 	//A module page parser
-	getModuleContent: data => {
-		data = cutOuterPage(data)
-
-		//Grab page useful data
+	parseModuleContent: data => {
+		//Grab module title
 		let pageTitleMatch = data.match(regexList.modulePage.title)
 		if (!pageTitleMatch) return null
+
 		let moduleContent = {
 			moduleTitle: (pageTitleMatch[1]) ? pageTitleMatch[1] : null,
 			uploads: []
 		}
-		data.match(regexList.modulePage.uploadsGroups).forEach(x => {
+
+		//Grab each activities available
+		let temp = data.match(regexList.modulePage.uploadsGroups)
+		if (!temp) return null
+
+		temp.forEach(x => {
 			x = x.match(regexList.modulePage.uploads)
+			if (!x) return null
 			let temp = {
 				title: (x.length > 2) ? x[2].trim() : null,
-				link: (x.length > 1) ? x[1].trim() : null
+				link: (x.length > 1) ? x[1].trim() : null,
+				type: (x[0].includes('PDF')) ? "PDF" : null
 			}
-			switch ((x.length > 1) ? x[1].trim().match(regexList.modulePage.uploadType)[1] : null) {
-				case "resource":
-					temp.type = "file"
-					break
-				case "assign":
-					temp.type = "homework"
-					break
-				case "assignment":
-					temp.type = "test"
-					break
-				case "folder":
-					temp.type = "directory"
-					break
-				case "forum":
-					temp.type = "forum"
-					break
-				case "wiki":
-					temp.type = "wiki"
-					break
-				case "url":
-					temp.type = "url"
-					break
-				default:
-					temp.type = null
-					break
+			if (!temp.type) {
+				switch ((x.length > 1) ? x[1].trim().match(regexList.modulePage.uploadType)[1] : null) {
+					case "resource":
+						temp.type = "file"
+						break
+					case "assign":
+						temp.type = "homework"
+						break
+					case "assignment":
+						temp.type = "test"
+						break
+					case "folder":
+						temp.type = "directory"
+						break
+					case "forum":
+						temp.type = "forum"
+						break
+					case "wiki":
+						temp.type = "wiki"
+						break
+					case "url":
+						temp.type = "url"
+						break
+					case "page":
+						temp.type = "page"
+						break
+					case "":
+					default:
+						temp.type = null
+						break
+				}
 			}
 			moduleContent.uploads.push(temp)
 		})
 		return moduleContent
 	},
 
-	//a homework page parser (Deposit box)
-	getHomeworkContent: data => {
+	//a download page parser (Deposit box/pdf-viewer/directory)
+	parseDownloadPage: data => {
 		data = cutOuterPage(data)
 
-		//Grab page useful data
-		//Test if the page is a test page
-		let fileList = data.match(regexList.homeworkPage.test)
-		if (fileList) {
-			fileList = {
-				name: fileList[3],
-				type: fileList[2],
-				link: fileList[1]
-			}
-			return fileList
+		let fileList = [],
+			temp
+
+		//PDF viewer
+		while ((temp = regexList.downloadPage.pdfViewer.exec(data)) !== null) {
+			fileList.push({
+				name: temp[2],
+				link: temp[1]
+			})
 		}
 
-		//Test if the page is a homework page
-		fileList = data.match(regexList.homeworkPage.homework)
-		if (fileList) {
-			fileList = {
-				name: fileList[1],
-				type: null,
-				link: fileList[2]
+		//Homework/test
+		if (fileList.length === 0) {
+			while ((temp = regexList.downloadPage.homework.exec(data)) !== null) {
+				fileList.push({
+					name: temp[2],
+					link: temp[1]
+				})
 			}
-			return fileList
 		}
 
-		//Page was not recognized
-		return
+		//Directory content
+		if (fileList.length === 0) {
+			while ((temp = regexList.downloadPage.directoryContent.exec(data)) !== null) {
+				fileList.push({
+					name: temp[2],
+					link: temp[1]
+				})
+			}
+		}
+
+		return fileList
 	}
 }
