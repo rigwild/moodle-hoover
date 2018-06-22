@@ -28,7 +28,6 @@ const cutOuterPage = data => {
   return data
 }
 
-
 //The index page where every modules is listed
 module.exports.parseAllModulesLinks = data => {
   data = cutOuterPage(data)
@@ -48,7 +47,6 @@ const parseFileSize = strFileSize => {
   let size
   try {
     let temp = strFileSize.trim().match(regexList.modulePage.uploadSize)
-    console.log(strFileSize, temp)
     size = parseFloat(temp[1])
     switch (temp[2]) {
       case "O":
