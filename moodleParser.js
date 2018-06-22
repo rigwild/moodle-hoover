@@ -7,7 +7,7 @@ const regexList = {
     title: /\<title\>(.*?)\<\/title\>/,
     uploadsGroups: /\<div class=\"activityinstance\"\>.*?\<\/div\>/g,
     uploads: /href=\"(.*?)\".*?\"instancename\"\>(.*?)\<(?:.*?resourcelinkdetails\"\>(.*?)\<)?/,
-    uploadSize: /(.*?)(O|Ko|Mo|Go).*/,
+    uploadSize: /(.*?)(octets|Ko|Mo|Go).*/,
     uploadType: /(resource|assign|assignment|folder|forum|url|wiki|page|data)/
   },
   downloadPage: {
@@ -48,7 +48,7 @@ const parseFileSize = strFileSize => {
   let size
   try {
     let temp = strFileSize.trim().match(regexList.modulePage.uploadSize)
-    console.log(temp)
+    console.log(strFileSize, temp)
     size = parseFloat(temp[1])
     switch (temp[2]) {
       case "O":
