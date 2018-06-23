@@ -32,7 +32,6 @@ module.exports.getMoodleLoginCookies = (username, password, link) => {
         'User-Agent': user_agent,
         'Content-Encoding': 'gzip, deflate',
         'Content-Length': Buffer.byteLength(postData),
-        'Connection': 'keep-alive'
       }
     };
 
@@ -66,7 +65,6 @@ module.exports.getMoodleLoggedInData = (cookies, link) => {
         'Content-Type': 'text/html; charset=utf-8',
         'User-Agent': user_agent,
         'Content-Encoding': 'gzip, deflate',
-        'Connection': 'keep-alive',
         'Cookie': cookies.join(";") + ";"
       }
     };

@@ -5,7 +5,6 @@ const moodleParser = require('./moodleParser.js');
 const fs = require('fs');
 const download = require('download');
 
-
 const moodleURL = "http://iic0e.univ-littoral.fr/moodle/";
 const filesDownloadDirectory = "./downloads/"
 
@@ -18,6 +17,9 @@ let cookies;
 let dataContainer;
 //Will contain the logged in user directory path
 let userPath;
+
+
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 (() => {
   console.log(`Logging in with the user "${username}" ...`);
@@ -77,36 +79,57 @@ let userPath;
       console.log("Getting all the direct download links of your files ...");
       //Create an array of promises to get all the files direct download links
       let promisesArray2 = [];
-      dataContainer.forEach(moodleModule => {
-        moodleModule.moduleContent.uploads.forEach(y => {
-          promisesArray2.push(
-            new Promise((resolve, reject) => {
-              //These link types redirect to another page
-              if (y.type === "PDF" || y.type === "directory" || y.type === "test" || y.type === "homework") {
-                moodleHttp.getMoodleLoggedInData(cookies, y.link)
-                  .catch(err => {
-                    console.error(err);
-                    reject();
-                  })
-                  .then(res => {
-                    y.downloadLink = moodleParser.parseDownloadPage(res);
-                    console.log(`Got the download link of : ${moodleModule.title} # ${y.title} ...`);
-                    resolve();
-                  })
-              }
-              //Other ones don't redirect, already direct download links
-              else {
-                console.log(`Got the download link of : ${moodleModule.title} # ${y.title} ...`);
-                resolve();
-              }
-            })
-          );
-        });
-      });
 
       //All the data is in the "dataContainer" variable.
       //Makes sure all promises have been completed
-      return Promise.all(promisesArray2);
+      return new Promise(async resolveAllLinks => {
+        //Get the download links of each module, one module by one module
+        for (let moodleModule of dataContainer) {
+          promisesArray2 = [];
+
+          //We set up an array of promises for one module
+          //each download links of this module are fetched simultaneously
+          for (let upload of moodleModule.moduleContent.uploads) {
+            promisesArray2.push(
+              new Promise((resolve, reject) => {
+                //These link types redirect to another page
+                if (upload.type === "PDF" ||
+                  upload.type === "directory" ||
+                  upload.type === "test" ||
+                  upload.type === "homework"
+                ) {
+                  moodleHttp.getMoodleLoggedInData(cookies, upload.link)
+                    .catch(err => {
+                      console.error(err);
+                      reject();
+                    })
+                    .then(res => {
+                      upload.downloadLink = moodleParser.parseDownloadPage(res);
+                      console.log(`Got the download link of : ${moodleModule.title} # ${upload.title} ...`);
+                      resolve();
+                    })
+                }
+                //Other ones don't redirect, already direct download links
+                else {
+                  console.log(`Got the download link of : ${moodleModule.title} # ${upload.title} ...`);
+                  resolve();
+                }
+              }) //Promise end
+            ); //Promise pushed in array end
+          } //for end
+          console.log(`\nGetting the download links of the module : ${moodleModule.title} ...`);
+          try {
+            await Promise.all(promisesArray2) //Starting to get all the download links of this module
+          } catch (e) {
+            console.log(e);
+          }
+          console.log("Waiting 10 seconds to not be temporarely banned from the server ...")
+          await delay(10000);
+          console.log("Delay just finished. The script continues ...");
+        }; //for end
+        //We got all download links
+        resolveAllLinks();
+      }); //big Promise end
     })
     .catch(err => console.log(err))
     .then(() => {
@@ -124,17 +147,21 @@ let userPath;
       fs.writeFileSync(`${userPath}moodle_data.json`, JSON.stringify(dataContainer));
 
       //Download the content of each modules
-      return new Promise((resolve, reject) => {
-        dataContainer.forEach((moodleModule) => {
+      return new Promise(async (resolve, reject) => {
+        for (let moodleModule of dataContainer) {
           //modules directories names, Limiting to 200 chars and replacing all bad chars with "_"
           const modulePath = userPath + moodleHttp.cleanFileName(moodleModule.title) + "/";
-          moodleHttp.downloadModuleFiles(cookies, modulePath, moodleModule)
-            .then(() => {
-              console.log(`Success downloading files from the module : ${moodleModule.title}. Path of the module : ${modulePath}`);
-              resolve();
-            })
-            .catch(err => console.error(err));
-        });
+          try {
+            await moodleHttp.downloadModuleFiles(cookies, modulePath, moodleModule)
+            console.log(`Success downloading files from the module : ${moodleModule.title}. Path of the module : ${modulePath}`);
+          } catch (err) {
+            console.log(`Failed downloading files from the module : ${moodleModule.title}. Error message : ${err}`);
+          }
+          console.log("Waiting 10 seconds to not be temporarely banned from the server ...")
+          await delay(10000);
+          console.log("Delay just finished. The script continues ...");
+        }
+        resolve();
       });
     })
     .then(() => {
