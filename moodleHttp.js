@@ -98,19 +98,28 @@ module.exports.downloadModuleFiles = (cookies, modulePath, moodleModule) => {
   let moduleLinks = [];
   moodleModule.moduleContent.uploads.forEach(y => {
     //It's a directory or a homework/test
-    if (y.hasOwnProperty("downloadLink") && y.downloadLink.length > 0)
+    if (y.hasOwnProperty("downloadLink") && y.downloadLink.length > 0 && y.type !== "PDF")
       y.downloadLink.forEach(z => {
         const path = `${modulePath}${cleanFileName(y.title)}/`;
         if (!fs.existsSync(path))
           fs.mkdirSync(path);
         moduleLinks.push({
+          name: cleanFileName(z.name),
           link: z.link,
           path: path
         })
       })
+    //It's a PDF file
+    else if (y.hasOwnProperty("downloadLink") && y.downloadLink.length > 0 && y.type === "PDF")
+      moduleLinks.push({
+        name: cleanFileName(y.downloadLink[0].name),
+        link: y.downloadLink[0].link,
+        path: modulePath
+      });
     //It's a file
     else if (y.type === "file")
       moduleLinks.push({
+        name: cleanFileName(y.title),
         link: y.link,
         path: modulePath
       });
@@ -129,6 +138,11 @@ module.exports.downloadModuleFiles = (cookies, modulePath, moodleModule) => {
   let promiseArray = [];
   moduleLinks.forEach(dl => promiseArray.push(
     new Promise((res, rej) => {
+      //The file is already there, don't download again
+      if (fs.existsSync(dl.path+dl.name))
+        res();
+      
+
       download(dl.link, dl.path, options)
         .then(() => res())
         .catch(err => rej(err))
