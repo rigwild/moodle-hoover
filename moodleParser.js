@@ -7,7 +7,7 @@ const regexList = {
     title: /\<title\>(.*?)\<\/title\>/,
     uploadsGroups: /\<div class=\"activityinstance\"\>.*?\<\/div\>/g,
     uploads: /href=\"(.*?)\".*?\"instancename\"\>(.*?)\<(?:.*?resourcelinkdetails\"\>(.*?)\<)?/,
-    uploadSize: /(.*?)(octets|Ko|Mo|Go).*/,
+    uploadSize: /(.*?)(octets|Ko|Mo|Go|KB|MB|GB).*/,
     uploadType: /(resource|assign|assignment|folder|forum|url|wiki|page|data)/
   },
   downloadPage: {
@@ -64,7 +64,7 @@ const parseFileSize = strFileSize => {
     }
   } catch (e) {
     size = null
-    console.log(e)
+    console.log("Got error, set null instead :", e)
   }
   return size
 }
