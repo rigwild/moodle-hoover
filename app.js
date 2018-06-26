@@ -1,15 +1,15 @@
-require('dotenv').config()
+require('dotenv').config();
 
 const moodleHttp = require('./moodleHttp.js');
 const moodleParser = require('./moodleParser.js');
 const fs = require('fs');
 const download = require('download');
 
-const moodleURL = "http://iic0e.univ-littoral.fr/moodle/";
-const filesDownloadDirectory = "./downloads/"
-
 const username = process.env.MOODLE_USER;
 const password = process.env.MOODLE_PASS;
+
+const moodleURL = process.env.MOODLE_URL;
+const filesDownloadDirectory = process.env.FILES_DOWNLOAD_DIRECTORY || "./downloads/";
 
 //Login cookies container
 let cookies;
@@ -18,10 +18,9 @@ let dataContainer;
 //Will contain the logged in user directory path
 let userPath;
 
-
 const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
-(() => {
+const setup_cli = () => {
   console.log(`Logging in with the user "${username}" ...`);
   //Login to moodle
   moodleHttp.getMoodleLoginCookies(
@@ -38,7 +37,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
       cookies = res;
       //Fetching home page (with modules links)
       console.log("Fetching all modules links ...");
-      return moodleHttp.getMoodleLoggedInData(cookies, `${moodleURL}index.php`)
+      return moodleHttp.getMoodleLoggedInData(cookies, `${moodleURL}index.php`);
     })
     .catch(err => {
       console.error(err);
@@ -107,7 +106,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
                       upload.downloadLink = moodleParser.parseDownloadPage(res);
                       console.log(`Got the download link of : ${moodleModule.title} # ${upload.title} ...`);
                       resolve();
-                    })
+                    });
                 }
                 //Other ones don't redirect, already direct download links
                 else {
@@ -119,7 +118,8 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
           } //for end
           console.log(`\nGetting the download links of the module : ${moodleModule.title} ...`);
           try {
-            await Promise.all(promisesArray2) //Starting to get all the download links of this module
+            //Starting to get all the download links of this module
+            await Promise.all(promisesArray2);
           } catch (e) {
             console.log(e);
           }
@@ -169,5 +169,7 @@ const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
       console.log(`\n\nAll the files have been downloaded to : ${userPath}. A JSON file containing all the data about these files was created in : ${userPath}`);
       console.log("Thanks for using this program. You can find the project's Github repository here : https://github.com/rigwild/moodle-hoover");
     })
-    .catch(err => console.error(err))
-})();
+    .catch(err => console.error(err));
+};
+
+setup_cli();
