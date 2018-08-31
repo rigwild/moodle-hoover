@@ -2,18 +2,11 @@
 This is a node.js script which will download all the files available in a Moodle account. It downloads files, PDFs and the content of test work boxes (Homework too). A file is generated with all the data scrapped from your Moodle account.
 
 ## Install
-To install this app, you first need to have node.js and npm. You can do so by executing these commands :
+Download the content of the repository and install the needed dependencies through these commands :
 
-	$ curl -sL https://deb.nodesource.com/setup_10.x | sudo -E bash -
-	$ sudo apt-get install -y nodejs
+    git clone https://github.com/rigwild/moodle-hoover
+    npm install
 
-You can find more informations on node.js's installation guide : [https://nodejs.org/en/download/package-manager/](https://nodejs.org/en/download/package-manager/).
-
-___
-You then need to download the content of the repository and install the needed dependencies through these commands :
-
-    $ git clone https://github.com/rigwild/moodle-hoover
-    $ npm install
 ## Configure
 In order to configure this script, you need to modify the file *./.env* with your settings :
 
@@ -36,11 +29,12 @@ If you style have issues logging in, check which parameters are sent through the
 ___
 You are done ! To start the script just run this in the root of the project's directory :
 
-    $ npm start
+    npm start
+
 Please keep in mind that i did my testing on my own school's Moodle, so it may not work on your's and you will need to do some adjustments (Regexps, redirects). You can open an issue and I will make sure to look into it.
 
 ## Demo
-![demo](https://github.asauvage.fr/img/other/moodle-hoover.gif)
-## License
+![demo](moodle-hoover.gif)
 
+## License
 This project is licensed under the [MIT](https://github.com/rigwild/moodle-hoover/blob/master/LICENSE) license.
